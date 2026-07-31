@@ -18,7 +18,7 @@
         speedTimer: 0,
         duplicates: 0,
         fileHash: new Map(),
-        logs: [],
+        logs: ['🚀 Tool đã khởi động!'],
         maxLogs: 500,
         failCount: 0
     };
@@ -50,21 +50,15 @@
         }
     };
     const U = {
-        sz: b => { if (!b || b <= 0) return '0B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (b >= 1024 && i < 3) { b /= 1024;
-                i++; } return b.toFixed(i === 0 ? 0 : 1) + u[i]; },
+        sz: b => { if (!b || b <= 0) return '0B'; const u = ['B', 'KB', 'MB', 'GB']; let i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i === 0 ? 0 : 1) + u[i]; },
         dm: u => { try { return new URL(u).hostname.replace(/^www\./, '').replace(/[^a-zA-Z0-9_\-.]/g, '_'); } catch { return 'unknown'; } },
         ts: () => { const d = new Date(); return '' + d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + '_' + String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0') + String(d.getSeconds()).padStart(2, '0'); },
         ip: () => `${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`,
-        id: () => { const a = new Uint8Array(8);
-            crypto.getRandomValues(a); return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join(''); },
-        sha256: async d => { const e = new TextEncoder(),
-                b = await crypto.subtle.digest('SHA-256', e.encode(d)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); },
-        dedupe: a => { const s = new Set(); return a.filter(i => { const k = typeof i === 'object' ? JSON.stringify(i) : i; if (s.has(k)) return false;
-                s.add(k); return true; }); },
+        id: () => { const a = new Uint8Array(8); crypto.getRandomValues(a); return Array.from(a).map(b => b.toString(16).padStart(2, '0')).join(''); },
+        sha256: async d => { const e = new TextEncoder(), b = await crypto.subtle.digest('SHA-256', e.encode(d)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); },
+        dedupe: a => { const s = new Set(); return a.filter(i => { const k = typeof i === 'object' ? JSON.stringify(i) : i; if (s.has(k)) return false; s.add(k); return true; }); },
         sleep: ms => new Promise(r => setTimeout(r, ms)),
-        norm: u => { try { const p = new URL(u);
-                p.search = '';
-                p.hash = ''; return p.toString(); } catch { return u; } },
+        norm: u => { try { const p = new URL(u); p.search = ''; p.hash = ''; return p.toString(); } catch { return u; } },
         valid: u => { try { const p = new URL(u); return p.protocol === 'http:' || p.protocol === 'https:'; } catch { return false; } },
         fmt: ms => ms < 1000 ? ms + 'ms' : ms < 60000 ? (ms / 1000).toFixed(1) + 's' : Math.floor(ms / 60000) + 'm ' + Math.floor((ms % 60000) / 1000) + 's',
         getFileExt: u => { try { const p = new URL(u); const path = p.pathname; const ext = path.split('.').pop().toLowerCase(); return ext || 'html'; } catch { return 'html'; } }
@@ -114,8 +108,7 @@
                             S.abort.delete(rid);
                             return d;
                         }
-                    } catch (e) { last = e;
-                        await U.sleep(100 * t); }
+                    } catch (e) { last = e; await U.sleep(100 * t); }
                 }
             }
             S.abort.delete(rid);
@@ -160,11 +153,14 @@
     };
     const Dialog = {
         show: (content) => {
-            document.getElementById('customDialog').style.display = 'flex';
+            const dlg = document.getElementById('customDialog');
+            if (!dlg) { alert(content.replace(/<[^>]*>/g, '')); return; }
+            dlg.style.display = 'flex';
             document.getElementById('dialogContent').innerHTML = content;
         },
         hide: () => {
-            document.getElementById('customDialog').style.display = 'none';
+            const dlg = document.getElementById('customDialog');
+            if (dlg) dlg.style.display = 'none';
         },
         confirm: (message, callback) => {
             const html = `
@@ -177,7 +173,8 @@
                 </div>
             `;
             Dialog.show(html);
-            document.getElementById('dlgConfirmBtn').onclick = () => { Dialog.hide(); if (callback) callback(); };
+            const btn = document.getElementById('dlgConfirmBtn');
+            if (btn) btn.onclick = () => { Dialog.hide(); if (callback) callback(); };
         },
         alert: (message) => {
             const html = `
@@ -210,8 +207,7 @@
                         <span style="width:40px;text-align:center;"><input type="checkbox" id="selectAllExt" checked></span>
                     </div>
             `;
-            let total = 0,
-                totalSize = 0;
+            let total = 0, totalSize = 0;
             Object.keys(extMap).forEach(ext => {
                 const info = extMap[ext];
                 total += info.count;
@@ -238,31 +234,38 @@
                 </div>
             `;
             Dialog.show(html);
-            document.getElementById('selectAllExt').addEventListener('change', function() {
-                document.querySelectorAll('.ext-check').forEach(cb => cb.checked = this.checked);
-            });
-            document.getElementById('dlgDownloadBtn').onclick = () => {
-                const selected = [];
-                document.querySelectorAll('.ext-check:checked').forEach(cb => {
-                    const ext = cb.dataset.ext;
-                    if (extMap[ext]) selected.push(...extMap[ext].items);
+            const selectAll = document.getElementById('selectAllExt');
+            if (selectAll) {
+                selectAll.addEventListener('change', function() {
+                    document.querySelectorAll('.ext-check').forEach(cb => cb.checked = this.checked);
                 });
-                Dialog.hide();
-                if (selected.length === 0) { Dialog.alert('Chưa chọn file nào!'); return; }
-                if (callback) callback(selected);
-            };
+            }
+            const downloadBtn = document.getElementById('dlgDownloadBtn');
+            if (downloadBtn) {
+                downloadBtn.onclick = () => {
+                    const selected = [];
+                    document.querySelectorAll('.ext-check:checked').forEach(cb => {
+                        const ext = cb.dataset.ext;
+                        if (extMap[ext]) selected.push(...extMap[ext].items);
+                    });
+                    Dialog.hide();
+                    if (selected.length === 0) { Dialog.alert('Chưa chọn file nào!'); return; }
+                    if (callback) callback(selected);
+                };
+            }
         }
     };
     window.Dialog = Dialog;
+
     const UI = {
         msg: (t) => {
             const w = document.getElementById('msgArea');
+            if (!w) { console.log(t); return; }
             const el = document.createElement('div');
             el.className = 'msg';
             el.textContent = t;
             w.appendChild(el);
-            setTimeout(() => { el.style.opacity = '0';
-                setTimeout(() => el.remove(), 250); }, 3200);
+            setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 250); }, 3200);
         },
         addLog: (txt) => {
             const time = new Date().toLocaleTimeString();
@@ -274,20 +277,23 @@
                 logView.textContent = S.logs.join('\n');
                 logView.scrollTop = logView.scrollHeight;
             }
+            console.log(line);
         },
         render: () => {
             const w = document.getElementById('queueList');
-            const t = document.getElementById('totalCount');
-            const d = document.getElementById('doneCount');
+            if (!w) return;
             const v = S.f === 'all' ? S.q : S.q.filter(x => x.s === S.f);
-            t.textContent = S.q.length;
             const dc = S.q.filter(x => x.s === 'done').length;
-            d.textContent = dc + ' xong';
+            document.getElementById('totalCount').textContent = S.q.length;
+            document.getElementById('doneCount').textContent = dc + ' xong';
             if (S.q.length) {
                 const p = Math.round((dc / S.q.length) * 100);
-                document.getElementById('progressBar').style.width = p + '%';
-                document.getElementById('progressText').textContent = p + '%';
-                document.getElementById('progressPercent').textContent = p + '%';
+                const pb = document.getElementById('progressBar');
+                if (pb) pb.style.width = p + '%';
+                const pt = document.getElementById('progressText');
+                if (pt) pt.textContent = p + '%';
+                const pp = document.getElementById('progressPercent');
+                if (pp) pp.textContent = p + '%';
             }
             if (!v.length) {
                 w.innerHTML = '<div class="empty-txt">Không có mục</div>';
@@ -324,71 +330,93 @@
         },
         updSel: () => {
             const c = document.querySelectorAll('.chk:checked');
-            document.getElementById('selectedCount').textContent = c.length;
-            document.getElementById('batchActions').style.display = c.length ? 'flex' : 'none';
+            const sc = document.getElementById('selectedCount');
+            if (sc) sc.textContent = c.length;
+            const ba = document.getElementById('batchActions');
+            if (ba) ba.style.display = c.length ? 'flex' : 'none';
         },
         stats: () => {
-            const t = S.q.length;
             const d = S.q.filter(x => x.s === 'done').length;
             const f = S.q.filter(x => x.s === 'fail').length;
             const p = S.q.filter(x => x.s === 'pending').length;
             const r = S.q.filter(x => x.s === 'run').length;
-            document.getElementById('totalCount').textContent = t;
-            document.getElementById('doneCount').textContent = d + ' xong';
-            document.getElementById('pendingCount').textContent = p;
-            document.getElementById('runningCount').textContent = r;
-            document.getElementById('failedCount').textContent = f;
-            document.getElementById('crawledCount').textContent = S.crawled;
-            document.getElementById('processingCount').textContent = S.proc.size;
-            document.getElementById('duplicateCount').textContent = S.duplicates;
-            document.getElementById('successCount').textContent = S.dc || 0;
-            document.getElementById('failCount').textContent = S.failCount || 0;
+            const total = document.getElementById('totalCount');
+            if (total) total.textContent = S.q.length;
+            const done = document.getElementById('doneCount');
+            if (done) done.textContent = d + ' xong';
+            const pend = document.getElementById('pendingCount');
+            if (pend) pend.textContent = p;
+            const run = document.getElementById('runningCount');
+            if (run) run.textContent = r;
+            const fail = document.getElementById('failedCount');
+            if (fail) fail.textContent = f;
+            const crawled = document.getElementById('crawledCount');
+            if (crawled) crawled.textContent = S.crawled;
+            const proc = document.getElementById('processingCount');
+            if (proc) proc.textContent = S.proc.size;
+            const dup = document.getElementById('duplicateCount');
+            if (dup) dup.textContent = S.duplicates;
+            const success = document.getElementById('successCount');
+            if (success) success.textContent = S.dc || 0;
+            const failCount = document.getElementById('failCount');
+            if (failCount) failCount.textContent = S.failCount || 0;
             if (d > 0) {
-                document.getElementById('avgTime').textContent = U.fmt(Math.round(S.tt / d));
+                const avg = document.getElementById('avgTime');
+                if (avg) avg.textContent = U.fmt(Math.round(S.tt / d));
             }
             if (S.start > 0 && S.run) {
                 const e = Date.now() - S.start;
-                document.getElementById('elapsedTime').textContent = U.fmt(e);
+                const elapsed = document.getElementById('elapsedTime');
+                if (elapsed) elapsed.textContent = U.fmt(e);
                 const rem = S.q.filter(x => x.s === 'pending' || x.s === 'fail').length;
                 if (rem > 0 && d > 0) {
                     const rate = d / (e / 1000);
-                    document.getElementById('etaTime').textContent = U.fmt((rem / rate) * 1000);
+                    const eta = document.getElementById('etaTime');
+                    if (eta) eta.textContent = U.fmt((rem / rate) * 1000);
                 }
             }
             if (S.start > 0 && S.run) {
                 const elapsed = (Date.now() - S.start) / 1000;
                 if (elapsed > 0) {
                     const speed = S.crawled / elapsed;
-                    document.getElementById('speedDisplay').textContent = speed.toFixed(1);
+                    const spd = document.getElementById('speedDisplay');
+                    if (spd) spd.textContent = speed.toFixed(1);
                 }
             }
             if (S.q.length > 0) {
                 const dc = S.q.filter(x => x.s === 'done').length;
                 const pct = Math.min(100, Math.round((dc / S.q.length) * 100));
-                document.getElementById('progressPercent').textContent = pct + '%';
+                const pp = document.getElementById('progressPercent');
+                if (pp) pp.textContent = pct + '%';
             }
         },
-        show: t => { document.getElementById('codeView').textContent = t || '--'; },
-        clear: () => { document.getElementById('codeView').textContent = ''; },
+        show: t => {
+            const cv = document.getElementById('codeView');
+            if (cv) cv.textContent = t || '--';
+        },
+        clear: () => {
+            const cv = document.getElementById('codeView');
+            if (cv) cv.textContent = '';
+        },
         toggleLog: (show) => {
-            document.getElementById('logContainer').style.display = show ? 'block' : 'none';
+            const lc = document.getElementById('logContainer');
+            if (lc) lc.style.display = show ? 'block' : 'none';
         }
     };
+
     const W = {
         process: async () => {
             if (S.run || S.pause) return;
-            const crawlOn = document.getElementById('crawlToggle').checked;
-            if (!crawlOn) {
-                S.run = false;
-                S.start = 0;
+            const crawlOn = document.getElementById('crawlToggle');
+            if (!crawlOn || !crawlOn.checked) {
+                S.run = false; S.start = 0;
                 UI.msg('⏸ Crawl đang tắt');
                 UI.addLog('⏸ Crawl đang tắt');
                 return;
             }
             const items = S.q.map((it, i) => ({ it, i })).filter(({ it }) => it.s === 'pending' || (it.s === 'fail' && it.retries < C.RL));
             if (!items.length) {
-                S.run = false;
-                S.start = 0;
+                S.run = false; S.start = 0;
                 UI.msg('✅ Hoàn thành');
                 UI.addLog('✅ Hoàn thành tất cả');
                 UI.stats();
@@ -437,8 +465,8 @@
                     return;
                 }
                 const raw = await Net.fetch(it.url);
-                const mode = document.getElementById('saveMode').value;
-                const content = mode === 'raw' ? raw : C.H + raw;
+                const mode = document.getElementById('saveMode');
+                const content = mode && mode.value === 'raw' ? raw : C.H + raw;
                 it.txt = content;
                 it.size = new Blob([content]).size;
                 it.s = 'done';
@@ -456,7 +484,7 @@
                 it.err = e.message;
                 it.retries = (it.retries || 0) + 1;
                 S.failCount++;
-                UI.addLog('❌ Lỗi: ' + it.url);
+                UI.addLog('❌ Lỗi: ' + it.url + ' - ' + e.message);
                 if (it.retries < C.RL) {
                     setTimeout(() => {
                         if (!S.pause && it.s === 'fail') {
@@ -477,65 +505,42 @@
                 Dialog.alert('⚠️ Đang crawl, dừng trước khi crawl mới!');
                 return;
             }
-            const val = document.getElementById('urlInput').value.trim();
-            const urls = Net.extract(val);
+            const val = document.getElementById('urlInput');
+            if (!val) { Dialog.alert('⚠️ Không tìm thấy input!'); return; }
+            const urls = Net.extract(val.value);
             if (!urls.length) {
                 Dialog.alert('⚠️ Không có URL hợp lệ!');
                 return;
             }
-            const maxFiles = parseInt(document.getElementById('maxFiles').value) || 50;
-            const timeout = parseInt(document.getElementById('timeoutSec').value) || 10;
-            const speedMode = document.getElementById('speedMode').value;
+            const maxFiles = parseInt(document.getElementById('maxFiles')?.value || 50);
+            const timeout = parseInt(document.getElementById('timeoutSec')?.value || 10);
+            const speedMode = document.getElementById('speedMode')?.value || 'medium';
             C.TO = timeout * 1000;
             const speedMap = { fast: 10, medium: 5, slow: 2 };
             C.MC = speedMap[speedMode] || 5;
             Dialog.alert(`🔍 Đang crawl tối đa ${maxFiles} file...`);
             UI.addLog(`🔍 Bắt đầu crawl, max ${maxFiles} files, timeout ${timeout}s`);
-            let total = 0,
-                dupCount = 0;
-            let fileCount = 0;
+            let total = 0, dupCount = 0, fileCount = 0;
             for (const u of urls) {
                 if (fileCount >= maxFiles) break;
                 try {
                     UI.addLog('📄 Đang crawl: ' + u);
                     const html = await Net.fetch(u);
                     const files = Net.extractAllFiles(html, u);
+                    UI.addLog('📄 Tìm thấy ' + files.length + ' file từ ' + u);
                     for (const file of files) {
                         if (fileCount >= maxFiles) break;
                         const n = U.norm(file.url);
                         const existing = S.q.find(x => x.url === n);
                         if (!existing) {
-                            S.q.push({
-                                url: n,
-                                txt: null,
-                                size: 0,
-                                s: 'pending',
-                                tm: null,
-                                err: null,
-                                retries: 0,
-                                checksum: null,
-                                fileType: file.ext
-                            });
-                            total++;
-                            fileCount++;
-                        } else {
-                            dupCount++;
-                        }
+                            S.q.push({ url: n, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: file.ext });
+                            total++; fileCount++;
+                            UI.addLog('  ➕ Thêm: ' + file.url);
+                        } else { dupCount++; }
                     }
                     if (fileCount < maxFiles) {
-                        S.q.push({
-                            url: u,
-                            txt: null,
-                            size: 0,
-                            s: 'pending',
-                            tm: null,
-                            err: null,
-                            retries: 0,
-                            checksum: null,
-                            fileType: 'html'
-                        });
-                        total++;
-                        fileCount++;
+                        S.q.push({ url: u, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: 'html' });
+                        total++; fileCount++;
                     }
                     UI.addLog(`✅ Crawl xong: ${u} (${fileCount}/${maxFiles})`);
                     UI.render();
@@ -559,8 +564,9 @@
                 Dialog.alert('⚠️ Đang crawl, vui lòng đợi!');
                 return;
             }
-            const val = document.getElementById('urlInput').value.trim();
-            const urls = Net.extract(val);
+            const val = document.getElementById('urlInput');
+            if (!val) { Dialog.alert('⚠️ Không tìm thấy input!'); return; }
+            const urls = Net.extract(val.value);
             if (!urls.length) {
                 Dialog.alert('⚠️ Không có URL hợp lệ!');
                 return;
@@ -568,22 +574,13 @@
             let used = Number(localStorage.getItem('toolUse') || 1247);
             used += urls.length;
             localStorage.setItem('toolUse', used);
-            document.getElementById('userCount').textContent = used;
+            const uc = document.getElementById('userCount');
+            if (uc) uc.textContent = used;
             let added = 0;
             for (const u of urls) {
                 const n = U.norm(u);
                 if (!S.q.some(x => x.url === n) && U.valid(n)) {
-                    S.q.push({
-                        url: n,
-                        txt: null,
-                        size: 0,
-                        s: 'pending',
-                        tm: null,
-                        err: null,
-                        retries: 0,
-                        checksum: null,
-                        fileType: 'html'
-                    });
+                    S.q.push({ url: n, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: 'html' });
                     added++;
                 }
             }
@@ -596,14 +593,16 @@
             UI.render();
             UI.stats();
             S.pause = false;
-            document.getElementById('pauseBtn').textContent = '⏸ Tạm dừng';
+            const pb = document.getElementById('pauseBtn');
+            if (pb) pb.textContent = '⏸ Tạm dừng';
             if (window._timerInterval) clearInterval(window._timerInterval);
             window._timerInterval = setInterval(() => { UI.stats(); }, 1000);
             await W.process();
         },
         pause: () => {
             S.pause = !S.pause;
-            document.getElementById('pauseBtn').textContent = S.pause ? '▶ Tiếp tục' : '⏸ Tạm dừng';
+            const pb = document.getElementById('pauseBtn');
+            if (pb) pb.textContent = S.pause ? '▶ Tiếp tục' : '⏸ Tạm dừng';
             if (!S.pause && S.run) W.process();
             UI.msg(S.pause ? '⏸ Đã dừng' : '▶ Tiếp tục');
             UI.addLog(S.pause ? '⏸ Đã tạm dừng' : '▶ Tiếp tục crawl');
@@ -617,9 +616,9 @@
                 S.abort.clear();
                 S.proc.clear();
                 S.q.forEach(it => { if (it.s === 'run') it.s = 'pending'; });
-                document.getElementById('pauseBtn').textContent = '▶ Tiếp tục';
-                if (window._timerInterval) { clearInterval(window._timerInterval);
-                    window._timerInterval = null; }
+                const pb = document.getElementById('pauseBtn');
+                if (pb) pb.textContent = '▶ Tiếp tục';
+                if (window._timerInterval) { clearInterval(window._timerInterval); window._timerInterval = null; }
                 UI.msg('⏹ Đã dừng');
                 UI.addLog('⏹ Đã dừng toàn bộ');
                 UI.render();
@@ -783,12 +782,12 @@
             });
         },
         copy: () => {
-            const t = document.getElementById('codeView').textContent;
-            if (!t.trim()) {
+            const t = document.getElementById('codeView');
+            if (!t || !t.textContent.trim()) {
                 Dialog.alert('Không có nội dung để sao chép!');
                 return;
             }
-            navigator.clipboard.writeText(t).then(() => UI.msg('📋 Đã sao chép')).catch(() => Dialog.alert('❌ Lỗi sao chép!'));
+            navigator.clipboard.writeText(t.textContent).then(() => UI.msg('📋 Đã sao chép')).catch(() => Dialog.alert('❌ Lỗi sao chép!'));
         },
         selAll: () => {
             document.querySelectorAll('.chk').forEach(c => c.checked = true);
@@ -844,7 +843,8 @@
             if (!file) return;
             const r = new FileReader();
             r.onload = e => {
-                document.getElementById('urlInput').value = e.target.result;
+                const input = document.getElementById('urlInput');
+                if (input) input.value = e.target.result;
                 UI.msg('📂 Import: ' + file.name);
                 UI.addLog('📂 Import file: ' + file.name);
             };
@@ -891,10 +891,12 @@
         },
         clearLog: () => {
             S.logs = [];
-            document.getElementById('logView').textContent = '';
+            const lv = document.getElementById('logView');
+            if (lv) lv.textContent = '';
             UI.msg('🗑 Xóa log');
         }
     };
+
     window._v = W.view;
     window._d = W.download;
     window._r = W.retry;
@@ -902,51 +904,56 @@
 
     const init = () => {
         const load = () => {
-            document.getElementById('autoProxy').checked = localStorage.getItem('autoProxy') === 'true';
-            document.getElementById('spoofInfo').checked = localStorage.getItem('spoofInfo') === 'true';
-            document.getElementById('retryFail').checked = localStorage.getItem('retryFail') === 'true';
-            const m = localStorage.getItem('saveMode');
-            if (m) document.getElementById('saveMode').value = m;
+            const ap = document.getElementById('autoProxy');
+            if (ap) ap.checked = localStorage.getItem('autoProxy') === 'true';
+            const si = document.getElementById('spoofInfo');
+            if (si) si.checked = localStorage.getItem('spoofInfo') === 'true';
+            const rf = document.getElementById('retryFail');
+            if (rf) rf.checked = localStorage.getItem('retryFail') === 'true';
+            const sm = document.getElementById('saveMode');
+            if (sm) {
+                const m = localStorage.getItem('saveMode');
+                if (m) sm.value = m;
+            }
         };
         load();
 
-        document.getElementById('startBtn').addEventListener('click', W.start);
-        document.getElementById('pauseBtn').addEventListener('click', W.pause);
-        document.getElementById('stopBtn').addEventListener('click', W.stop);
-        document.getElementById('resetAll').addEventListener('click', W.clearAll);
-        document.getElementById('clearDone').addEventListener('click', W.clearDone);
-        document.getElementById('clearFailed').addEventListener('click', W.clearFailed);
-        document.getElementById('copyTxt').addEventListener('click', W.copy);
-        document.getElementById('packZip').addEventListener('click', W.downloadAll);
-        document.getElementById('downloadSelected').addEventListener('click', W.downloadSelected);
-        document.getElementById('redoFail').addEventListener('click', W.retryAll);
-        document.getElementById('selAll').addEventListener('click', W.selAll);
-        document.getElementById('selNone').addEventListener('click', W.selNone);
-        document.getElementById('selInvert').addEventListener('click', W.selInv);
-        document.getElementById('delSelected').addEventListener('click', W.batchDel);
-        document.getElementById('retrySelected').addEventListener('click', W.batchRetry);
-        document.getElementById('saveList').addEventListener('click', W.export);
-        document.getElementById('exportResults').addEventListener('click', W.exportJson);
-        document.getElementById('loadList').addEventListener('click', () => document.getElementById('filePick').click());
-        document.getElementById('filePick').addEventListener('change', e => {
-            W.import(e.target.files[0]);
-            e.target.value = '';
-        });
-        document.getElementById('clearCache').addEventListener('click', () => {
-            Cache.clear();
-            UI.msg('🗑 Xóa cache');
-            UI.addLog('🗑 Xóa cache');
-        });
-        document.getElementById('crawlAllBtn').addEventListener('click', W.crawlAll);
-        document.getElementById('showLogBtn').addEventListener('click', () => {
-            UI.toggleLog(true);
-            UI.addLog('📋 Mở log');
-        });
-        document.getElementById('hideLogBtn').addEventListener('click', () => {
-            UI.toggleLog(false);
-            UI.addLog('📋 Đóng log');
-        });
-        document.getElementById('clearLogBtn').addEventListener('click', W.clearLog);
+        const bind = (id, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', fn);
+        };
+
+        bind('startBtn', W.start);
+        bind('pauseBtn', W.pause);
+        bind('stopBtn', W.stop);
+        bind('resetAll', W.clearAll);
+        bind('clearDone', W.clearDone);
+        bind('clearFailed', W.clearFailed);
+        bind('copyTxt', W.copy);
+        bind('packZip', W.downloadAll);
+        bind('downloadSelected', W.downloadSelected);
+        bind('redoFail', W.retryAll);
+        bind('selAll', W.selAll);
+        bind('selNone', W.selNone);
+        bind('selInvert', W.selInv);
+        bind('delSelected', W.batchDel);
+        bind('retrySelected', W.batchRetry);
+        bind('saveList', W.export);
+        bind('exportResults', W.exportJson);
+        bind('loadList', () => document.getElementById('filePick')?.click());
+        bind('clearCache', () => { Cache.clear(); UI.msg('🗑 Xóa cache'); UI.addLog('🗑 Xóa cache'); });
+        bind('crawlAllBtn', W.crawlAll);
+        bind('showLogBtn', () => { UI.toggleLog(true); UI.addLog('📋 Mở log'); });
+        bind('hideLogBtn', () => { UI.toggleLog(false); UI.addLog('📋 Đóng log'); });
+        bind('clearLogBtn', W.clearLog);
+
+        const fp = document.getElementById('filePick');
+        if (fp) {
+            fp.addEventListener('change', e => {
+                W.import(e.target.files[0]);
+                e.target.value = '';
+            });
+        }
 
         document.querySelectorAll('.f-btn').forEach(b => {
             b.addEventListener('click', () => {
@@ -957,17 +964,23 @@
             });
         });
 
-        document.getElementById('autoProxy').addEventListener('change', () => localStorage.setItem('autoProxy', document.getElementById('autoProxy').checked));
-        document.getElementById('spoofInfo').addEventListener('change', () => localStorage.setItem('spoofInfo', document.getElementById('spoofInfo').checked));
-        document.getElementById('retryFail').addEventListener('change', () => localStorage.setItem('retryFail', document.getElementById('retryFail').checked));
-        document.getElementById('saveMode').addEventListener('change', () => localStorage.setItem('saveMode', document.getElementById('saveMode').value));
+        const ap = document.getElementById('autoProxy');
+        if (ap) ap.addEventListener('change', () => localStorage.setItem('autoProxy', ap.checked));
+        const si = document.getElementById('spoofInfo');
+        if (si) si.addEventListener('change', () => localStorage.setItem('spoofInfo', si.checked));
+        const rf = document.getElementById('retryFail');
+        if (rf) rf.addEventListener('change', () => localStorage.setItem('retryFail', rf.checked));
+        const sm = document.getElementById('saveMode');
+        if (sm) sm.addEventListener('change', () => localStorage.setItem('saveMode', sm.value));
 
-        document.getElementById('userCount').textContent = localStorage.getItem('toolUse') || '1247';
-        document.getElementById('bypassCount').textContent = S.bc;
+        const uc = document.getElementById('userCount');
+        if (uc) uc.textContent = localStorage.getItem('toolUse') || '1247';
+        const bc = document.getElementById('bypassCount');
+        if (bc) bc.textContent = S.bc;
 
         UI.render();
         UI.stats();
-        UI.addLog('🚀 Khởi động MiniSeres Dump Tool');
+        UI.addLog('🚀 MiniSeres Dump Tool đã sẵn sàng!');
 
         const saved = localStorage.getItem('queueData');
         if (saved) {
@@ -997,10 +1010,17 @@
             UI.stats();
         }, 5000);
 
-        document.getElementById('customDialog').addEventListener('click', function(e) {
-            if (e.target === this) Dialog.hide();
-        });
+        const cd = document.getElementById('customDialog');
+        if (cd) {
+            cd.addEventListener('click', function(e) {
+                if (e.target === this) Dialog.hide();
+            });
+        }
     };
 
-    document.addEventListener('DOMContentLoaded', init);
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
