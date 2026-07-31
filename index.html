@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiniSeres Dump Tool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <div class="logo"><h1><i class="fas fa-spider"></i>MiniSeres <small>dump tool</small></h1></div>
+        <div class="badge-group">
+            <span><i class="fas fa-list"></i> <span id="totalCount">0</span></span>
+            <span><i class="fas fa-check-circle" style="color:#16a34a;"></i> <span id="doneCount">0</span></span>
+            <span><i class="fas fa-hourglass-half"></i> <span id="pendingCount">0</span></span>
+            <span><i class="fas fa-play-circle" style="color:#2563eb;"></i> <span id="runningCount">0</span></span>
+            <span><i class="fas fa-exclamation-triangle" style="color:#dc2626;"></i> <span id="failedCount">0</span></span>
+            <span><i class="fas fa-clock"></i> <span id="etaTime">--</span></span>
+        </div>
+    </div>
+
+    <div class="grid-2col">
+        <div class="panel">
+            <div class="panel-title"><i class="fas fa-arrow-right-to-bracket"></i> Nhập URL</div>
+            <div class="input-area">
+                <textarea id="urlInput" placeholder="https://example.com"></textarea>
+                <div class="toolbar">
+                    <button class="btn btn-primary" id="startBtn"><i class="fas fa-play"></i> Bắt đầu</button>
+                    <button class="btn btn-outline" id="pauseBtn"><i class="fas fa-pause"></i> Tạm dừng</button>
+                    <button class="btn btn-outline" id="stopBtn"><i class="fas fa-stop"></i> Dừng</button>
+                    <button class="btn btn-outline" id="resetAll"><i class="fas fa-trash"></i> Xóa hết</button>
+                </div>
+                <div class="toolbar" style="margin-top:6px;">
+                    <button class="btn btn-success" id="crawlAllBtn"><i class="fas fa-download"></i> Crawl ALL</button>
+                    <button class="btn btn-outline btn-sm" id="clearDone"><i class="fas fa-check-double"></i> Xóa done</button>
+                    <button class="btn btn-outline btn-sm" id="clearFailed"><i class="fas fa-times"></i> Xóa fail</button>
+                    <button class="btn btn-outline btn-sm" id="redoFail"><i class="fas fa-rotate"></i> Thử lại fail</button>
+                    <button class="btn btn-outline btn-sm" id="clearCache"><i class="fas fa-bolt"></i> Xóa cache</button>
+                </div>
+                <div class="toolbar" style="margin-top:4px; gap:6px; flex-wrap:wrap;">
+                    <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="autoProxy" checked> Proxy</label>
+                    <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="spoofInfo" checked> Spoof</label>
+                    <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px;"><input type="checkbox" id="retryFail" checked> Retry</label>
+                    <select id="saveMode" style="border-radius:20px; border:1px solid #d1d9e6; padding:4px 12px; font-size:0.8rem;">
+                        <option value="raw">Raw</option>
+                        <option value="html">HTML</option>
+                    </select>
+                    <label style="font-size:0.8rem; display:flex; align-items:center; gap:4px; margin-left:8px; background:#f1f5f9; padding:3px 12px; border-radius:30px;">
+                        <i class="fas fa-globe"></i>
+                        <input type="checkbox" id="crawlToggle" checked> ON
+                    </label>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+                    <button class="btn btn-outline btn-sm" id="saveList"><i class="fas fa-file-export"></i> Xuất URL</button>
+                    <button class="btn btn-outline btn-sm" id="exportResults"><i class="fas fa-file-code"></i> Xuất JSON</button>
+                    <button class="btn btn-outline btn-sm" id="loadList"><i class="fas fa-file-import"></i> Import</button>
+                    <input type="file" id="filePick" accept=".txt,.csv" style="display:none;">
+                    <button class="btn btn-outline btn-sm" id="packZip"><i class="fas fa-file-archive"></i> ZIP</button>
+                </div>
+                <div style="margin-top:8px; background:#f0f4ff; padding:8px 14px; border-radius:12px; font-size:0.8rem; display:flex; gap:12px; flex-wrap:wrap;">
+                    <span><i class="fas fa-database" style="color:#2563eb;"></i> Đã crawl: <strong id="crawledCount">0</strong></span>
+                    <span><i class="fas fa-file"></i> Đang xử lý: <strong id="processingCount">0</strong></span>
+                    <span><i class="fas fa-arrow-down"></i> Tốc độ: <span id="speedDisplay">0</span>/s</span>
+                    <span><i class="fas fa-filter"></i> Trùng: <strong id="duplicateCount">0</strong></span>
+                </div>
+            </div>
+            <div class="status-bar">
+                <span><i class="fas fa-user"></i> Dùng: <span id="userCount">0</span></span>
+                <span><i class="fas fa-shield-alt"></i> Bypass: <span id="bypassCount">0</span></span>
+                <span><i class="fas fa-clock"></i> Đã chạy: <span id="elapsedTime">--</span></span>
+                <span><i class="fas fa-tachometer-alt"></i> TB: <span id="avgTime">--</span></span>
+            </div>
+            <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+            <div style="font-size:0.8rem; text-align:right; color:#64748b;" id="progressText">0%</div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title"><i class="fas fa-list-ul"></i> Hàng đợi</div>
+            <div class="filter-bar">
+                <button class="f-btn active" data-f="all">Tất cả</button>
+                <button class="f-btn" data-f="pending">Chờ</button>
+                <button class="f-btn" data-f="run">Đang chạy</button>
+                <button class="f-btn" data-f="done">Xong</button>
+                <button class="f-btn" data-f="fail">Lỗi</button>
+                <span style="margin-left:auto; display:flex; gap:6px;">
+                    <span id="selectedCount" style="font-size:0.75rem; color:#64748b;">0</span>
+                    <span id="batchActions" style="display:none; gap:4px;">
+                        <button class="btn btn-sm btn-outline" id="delSelected"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-sm btn-outline" id="retrySelected"><i class="fas fa-rotate"></i></button>
+                    </span>
+                    <button class="btn btn-sm btn-outline" id="selAll"><i class="fas fa-check-double"></i></button>
+                    <button class="btn btn-sm btn-outline" id="selNone"><i class="fas fa-times"></i></button>
+                    <button class="btn btn-sm btn-outline" id="selInvert"><i class="fas fa-exchange-alt"></i></button>
+                </span>
+            </div>
+            <div class="queue-wrap" id="queueList"></div>
+            
+            <div style="margin-top:12px;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                    <button class="btn btn-outline btn-sm" id="showLogBtn"><i class="fas fa-terminal"></i> Xem log</button>
+                    <button class="btn btn-outline btn-sm" id="hideLogBtn"><i class="fas fa-eye-slash"></i> Ẩn log</button>
+                    <button class="btn btn-outline btn-sm" id="clearLogBtn"><i class="fas fa-eraser"></i> Xóa log</button>
+                </div>
+                <div id="logContainer" style="display:none;">
+                    <div class="log-view" id="logView"></div>
+                </div>
+            </div>
+            
+            <div style="margin-top:12px;">
+                <div class="panel-title" style="margin-bottom:4px;"><i class="fas fa-eye"></i> Nội dung</div>
+                <div class="code-view" id="codeView">--</div>
+                <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+                    <button class="btn btn-outline btn-sm" id="copyTxt"><i class="fas fa-copy"></i> Sao chép</button>
+                    <button class="btn btn-outline btn-sm" id="downloadSelected"><i class="fas fa-download"></i> Tải file đã chọn</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="msgArea"></div>
+    <div id="customDialog">
+        <div class="dialog-box" id="dialogContent"></div>
+    </div>
+</div>
+<script src="core.js"></script>
+<script src="net.js"></script>
+<script src="main.js"></script>
+</body>
+                    </html>
