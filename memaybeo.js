@@ -18,7 +18,7 @@
         speedTimer: 0,
         duplicates: 0,
         fileHash: new Map(),
-        logs: ['🚀 Tool đã khởi động!', '📌 Nhập 1 URL và bấm Crawl ALL để lấy toàn bộ file'],
+        logs: [],
         maxLogs: 1000,
         failCount: 0,
         totalFiles: 0,
@@ -204,7 +204,7 @@
                 <button class="close-btn" onclick="Dialog.hide()">&times;</button>
                 <h3><i class="fas fa-file-archive" style="color:#2563eb;"></i> Chọn file để tải</h3>
                 <div style="margin:12px 0; max-height:300px; overflow-y:auto;">
-                    <div style="font-size:0.8rem; color:#64748b; padding:4px 0; display:flex; gap:16px; border-bottom:1px solid #e2e8f0; font-weight:600;">
+                    <div style="font-size:0.8rem; color:#64748b; padding:4px 0; display:flex; gap:16px; border-bottom:1px solid #2a3a5a; font-weight:600;">
                         <span style="flex:2;">Đuôi file</span>
                         <span style="flex:1;text-align:center;">Số lượng</span>
                         <span style="flex:1;text-align:right;">Kích thước</span>
@@ -217,19 +217,19 @@
                 total += info.count;
                 totalSize += info.size;
                 html += `
-                    <div class="dlg-row" style="display:flex; gap:16px; align-items:center; padding:6px 0; border-bottom:1px solid #f1f5f9;">
-                        <span style="flex:2; font-weight:500;">.${ext}</span>
-                        <span style="flex:1; text-align:center;">${info.count}</span>
-                        <span style="flex:1; text-align:right;">${U.sz(info.size)}</span>
+                    <div class="dlg-row" style="display:flex; gap:16px; align-items:center; padding:6px 0; border-bottom:1px solid #1e293b;">
+                        <span style="flex:2; font-weight:500; color:#e2e8f0;">.${ext}</span>
+                        <span style="flex:1; text-align:center; color:#94a3b8;">${info.count}</span>
+                        <span style="flex:1; text-align:right; color:#94a3b8;">${U.sz(info.size)}</span>
                         <span style="width:40px; text-align:center;"><input type="checkbox" class="ext-check" data-ext="${ext}" checked></span>
                     </div>
                 `;
             });
             html += `
                     </div>
-                    <div style="margin:8px 0; padding:8px; background:#f8fafc; border-radius:8px; font-size:0.85rem; display:flex; justify-content:space-between;">
-                        <span>Tổng: <strong>${total}</strong> file</span>
-                        <span>Kích thước: <strong>${U.sz(totalSize)}</strong></span>
+                    <div style="margin:8px 0; padding:8px; background:rgba(255,255,255,0.03); border-radius:8px; font-size:0.85rem; display:flex; justify-content:space-between; border:1px solid #1e293b;">
+                        <span style="color:#94a3b8;">Tổng: <strong style="color:#e2e8f0;">${total}</strong> file</span>
+                        <span style="color:#94a3b8;">Kích thước: <strong style="color:#e2e8f0;">${U.sz(totalSize)}</strong></span>
                     </div>
                     <div class="dlg-actions">
                         <button class="btn btn-outline" onclick="Dialog.hide()">Hủy</button>
@@ -273,15 +273,21 @@
         },
         addLog: (txt) => {
             const time = new Date().toLocaleTimeString();
-            const line = `[${time}] ${txt}`;
+            let color = '';
+            if (txt.includes('✅') || txt.includes('Thành công') || txt.includes('Xong')) color = 'log-ok';
+            else if (txt.includes('❌') || txt.includes('Lỗi') || txt.includes('fail')) color = 'log-fail';
+            else if (txt.includes('⏳') || txt.includes('Đang') || txt.includes('tải')) color = 'log-info';
+            else if (txt.includes('⚠️') || txt.includes('Bỏ qua') || txt.includes('trùng')) color = 'log-warn';
+            else if (txt.includes('🚀') || txt.includes('🎯') || txt.includes('📌')) color = 'log-info';
+            const line = `<span class="log-time">[${time}]</span> <span class="${color}">${txt}</span>`;
             S.logs.push(line);
             if (S.logs.length > S.maxLogs) S.logs.shift();
             const logView = document.getElementById('logView');
             if (logView) {
-                logView.textContent = S.logs.join('\n');
+                logView.innerHTML = S.logs.join('\n');
                 logView.scrollTop = logView.scrollHeight;
             }
-            console.log(line);
+            console.log(txt);
         },
         render: () => {
             const w = document.getElementById('queueList');
@@ -367,702 +373,703 @@
             if (failCount) failCount.textContent = S.failCount || 0;
             if (d > 0) {
                 const avg = document.getElementById('avgTime');
-                if (avg) avg.textContent = U.fmt(Math.round(S.tt / d));
-            }
-            if (S.start > 0 && S.run) {
-                const e = Date.now() - S.start;
-                const elapsed = document.getElementById('elapsedTime');
-                if (elapsed) elapsed.textContent = U.fmt(e);
-                const rem = S.q.filter(x => x.s === 'pending' || x.s === 'fail').length;
-                if (rem > 0 && d > 0) {
-                    const rate = d / (e / 1000);
-                    const eta = document.getElementById('etaTime');
-                    if (eta) eta.textContent = U.fmt((rem / rate) * 1000);
-                }
-            }
-            if (S.start > 0 && S.run) {
-                const elapsed = (Date.now() - S.start) / 1000;
-                if (elapsed > 0) {
-                    const speed = S.crawled / elapsed;
-                    const spd = document.getElementById('speedDisplay');
-                    if (spd) spd.textContent = speed.toFixed(1);
-                }
-            }
-            if (S.q.length > 0) {
-                const dc = S.q.filter(x => x.s === 'done').length;
-                const pct = Math.min(100, Math.round((dc / S.q.length) * 100));
-                const pp = document.getElementById('progressPercent');
-                if (pp) pp.textContent = pct + '%';
-            }
-        },
-        show: t => {
-            const cv = document.getElementById('codeView');
-            if (cv) cv.textContent = t || '--';
-        },
-        clear: () => {
-            const cv = document.getElementById('codeView');
-            if (cv) cv.textContent = '';
-        },
-        toggleLog: (show) => {
-            const lc = document.getElementById('logContainer');
-            if (lc) lc.style.display = show ? 'block' : 'none';
+            if (avg) avg.textContent = U.fmt(Math.round(S.tt / d));
         }
-    };
+        if (S.start > 0 && S.run) {
+            const e = Date.now() - S.start;
+            const elapsed = document.getElementById('elapsedTime');
+            if (elapsed) elapsed.textContent = U.fmt(e);
+            const rem = S.q.filter(x => x.s === 'pending' || x.s === 'fail').length;
+            if (rem > 0 && d > 0) {
+                const rate = d / (e / 1000);
+                const eta = document.getElementById('etaTime');
+                if (eta) eta.textContent = U.fmt((rem / rate) * 1000);
+            }
+        }
+        if (S.start > 0 && S.run) {
+            const elapsed = (Date.now() - S.start) / 1000;
+            if (elapsed > 0) {
+                const speed = S.crawled / elapsed;
+                const spd = document.getElementById('speedDisplay');
+                if (spd) spd.textContent = speed.toFixed(1);
+            }
+        }
+        if (S.q.length > 0) {
+            const dc = S.q.filter(x => x.s === 'done').length;
+            const pct = Math.min(100, Math.round((dc / S.q.length) * 100));
+            const pp = document.getElementById('progressPercent');
+            if (pp) pp.textContent = pct + '%';
+        }
+    },
+    show: t => {
+        const cv = document.getElementById('codeView');
+        if (cv) cv.textContent = t || '--';
+    },
+    clear: () => {
+        const cv = document.getElementById('codeView');
+        if (cv) cv.textContent = '';
+    },
+    toggleLog: (show) => {
+        const lc = document.getElementById('logContainer');
+        if (lc) lc.style.display = show ? 'block' : 'none';
+    }
+};
 
-    const W = {
-        process: async () => {
-            if (S.run || S.pause) return;
-            const crawlOn = document.getElementById('crawlToggle');
-            if (!crawlOn || !crawlOn.checked) {
-                S.run = false; S.start = 0;
-                UI.msg('⏸ Crawl đang tắt');
-                UI.addLog('⏸ Crawl đang tắt');
-                return;
-            }
-            const items = S.q.map((it, i) => ({ it, i })).filter(({ it }) => it.s === 'pending' || (it.s === 'fail' && it.retries < C.RL));
-            if (!items.length) {
-                S.run = false; S.start = 0;
-                UI.msg('✅ Hoàn thành!');
-                UI.addLog('✅ Đã tải xong tất cả file!');
-                UI.stats();
-                return;
-            }
-            S.run = true;
-            S.start = S.start || Date.now();
-            const batch = items.slice(0, C.MC);
-            const proms = batch.map(({ it, i }) => W.processItem(i));
-            await Promise.allSettled(proms);
+const W = {
+    process: async () => {
+        if (S.run || S.pause) return;
+        const crawlOn = document.getElementById('crawlToggle');
+        if (!crawlOn || !crawlOn.checked) {
+            S.run = false; S.start = 0;
+            UI.msg('⏸ Crawl đang tắt');
+            UI.addLog('⏸ Crawl đang tắt');
+            return;
+        }
+        const items = S.q.map((it, i) => ({ it, i })).filter(({ it }) => it.s === 'pending' || (it.s === 'fail' && it.retries < C.RL));
+        if (!items.length) {
+            S.run = false; S.start = 0;
+            UI.msg('✅ Hoàn thành!');
+            UI.addLog('✅ Đã tải xong tất cả file!');
             UI.stats();
-            UI.render();
-            if (!S.pause && S.q.some(x => x.s === 'pending' || (x.s === 'fail' && x.retries < C.RL))) {
-                await U.sleep(50);
-                W.process();
-            } else {
-                S.run = false;
-                if (!S.pause) {
-                    UI.msg('✅ Xong queue');
-                    UI.addLog('✅ Xong queue');
-                }
+            return;
+        }
+        S.run = true;
+        S.start = S.start || Date.now();
+        const batch = items.slice(0, C.MC);
+        const proms = batch.map(({ it, i }) => W.processItem(i));
+        await Promise.allSettled(proms);
+        UI.stats();
+        UI.render();
+        if (!S.pause && S.q.some(x => x.s === 'pending' || (x.s === 'fail' && x.retries < C.RL))) {
+            await U.sleep(50);
+            W.process();
+        } else {
+            S.run = false;
+            if (!S.pause) {
+                UI.msg('✅ Xong queue');
+                UI.addLog('✅ Xong queue');
             }
-        },
-        processItem: async (idx) => {
-            const it = S.q[idx];
-            if (!it || it.s === 'done' || S.proc.has(idx)) return;
-            S.proc.add(idx);
-            it.s = 'run';
-            const name = U.getFileName(it.url);
-            UI.render();
-            const st = performance.now();
-            UI.addLog(`⏳ Đang tải: ${name} (${it.fileType||'html'})`);
-            try {
-                const cached = Cache.get(it.url);
-                if (cached) {
-                    it.txt = cached;
-                    it.size = new Blob([cached]).size;
-                    it.s = 'done';
-                    it.checksum = await U.sha256(cached);
-                    it.tm = Math.round(performance.now() - st) + 'ms (cache)';
-                    S.dc++;
-                    S.crawled++;
-                    UI.addLog(`⚡ Cache: ${name} - ${U.sz(it.size)}`);
-                    UI.msg(`⚡ ${name} (cache)`);
-                    S.proc.delete(idx);
-                    UI.render();
-                    UI.stats();
-                    return;
-                }
-                UI.addLog(`📡 Đang tải: ${name}...`);
-                const raw = await Net.fetch(it.url);
-                const mode = document.getElementById('saveMode');
-                const content = mode && mode.value === 'raw' ? raw : C.H + raw;
-                it.txt = content;
-                it.size = new Blob([content]).size;
+        }
+    },
+    processItem: async (idx) => {
+        const it = S.q[idx];
+        if (!it || it.s === 'done' || S.proc.has(idx)) return;
+        S.proc.add(idx);
+        it.s = 'run';
+        const name = U.getFileName(it.url);
+        UI.render();
+        const st = performance.now();
+        UI.addLog(`⏳ Đang tải: ${name} (${it.fileType||'html'})`);
+        try {
+            const cached = Cache.get(it.url);
+            if (cached) {
+                it.txt = cached;
+                it.size = new Blob([cached]).size;
                 it.s = 'done';
-                it.checksum = await U.sha256(content);
-                it.retries = 0;
-                Cache.set(it.url, content);
-                const used = Math.round(performance.now() - st);
-                it.tm = used + 'ms';
-                S.tt += used;
+                it.checksum = await U.sha256(cached);
+                it.tm = Math.round(performance.now() - st) + 'ms (cache)';
                 S.dc++;
                 S.crawled++;
-                UI.addLog(`✅ Thành công: ${name} - ${U.sz(it.size)} (${used}ms)`);
-                UI.msg(`✅ ${name} - ${U.sz(it.size)}`);
-            } catch (e) {
-                it.s = 'fail';
-                it.err = e.message;
-                it.retries = (it.retries || 0) + 1;
-                S.failCount++;
-                UI.addLog(`❌ Lỗi: ${name} - ${e.message} (lần ${it.retries})`);
-                UI.msg(`❌ ${name} - ${e.message}`);
-                if (it.retries < C.RL) {
-                    UI.addLog(`🔄 Sẽ thử lại ${name}...`);
-                    setTimeout(() => {
-                        if (!S.pause && it.s === 'fail') {
-                            it.s = 'pending';
-                            UI.render();
-                            W.process();
-                        }
-                    }, 500 * it.retries);
-                } else {
-                    UI.addLog(`💀 ${name} - Đã thử ${C.RL} lần, bỏ qua!`);
-                }
-            } finally {
+                UI.addLog(`⚡ Cache: ${name} - ${U.sz(it.size)}`);
+                UI.msg(`⚡ ${name} (cache)`);
                 S.proc.delete(idx);
                 UI.render();
                 UI.stats();
-            }
-        },
-        crawlAll: async () => {
-            if (S.run) {
-                Dialog.alert('⚠️ Đang crawl, dừng trước khi crawl mới!');
                 return;
             }
-            const val = document.getElementById('urlInput');
-            if (!val) { Dialog.alert('⚠️ Không tìm thấy input!'); return; }
-            const urls = Net.extract(val.value);
-            if (!urls.length) {
-                Dialog.alert('⚠️ Không có URL hợp lệ!');
-                return;
-            }
-            const mainUrl = urls[0];
-            S.mainUrl = mainUrl;
-            UI.addLog(`🎯 Mục tiêu: ${mainUrl}`);
-            UI.msg(`🎯 Crawl: ${mainUrl}`);
-            
-            const maxFiles = parseInt(document.getElementById('maxFiles')?.value || 100);
-            const timeout = parseInt(document.getElementById('timeoutSec')?.value || 10);
-            const speedMode = document.getElementById('speedMode')?.value || 'medium';
-            C.TO = timeout * 1000;
-            const speedMap = { fast: 10, medium: 5, slow: 2 };
-            C.MC = speedMap[speedMode] || 5;
-            
-            UI.addLog(`🔍 Đang phân tích trang chủ: ${mainUrl}`);
-            UI.msg(`🔍 Đang phân tích...`);
-            
-            try {
-                const html = await Net.fetch(mainUrl);
-                UI.addLog(`📄 Đã tải HTML chính (${U.sz(new Blob([html]).size)})`);
-                
-                const files = Net.extractAllFiles(html, mainUrl);
-                UI.addLog(`🔍 Tìm thấy ${files.length} file liên quan`);
-                
-                let total = 0, dupCount = 0, fileCount = 0;
-                
-                S.q.push({ url: mainUrl, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: 'html' });
-                total++; fileCount++;
-                UI.addLog(`  ➕ Thêm: index.html (trang chính)`);
-                
-                for (const file of files) {
-                    if (fileCount >= maxFiles) break;
-                    const n = U.norm(file.url);
-                    const existing = S.q.find(x => x.url === n);
-                    if (!existing) {
-                        S.q.push({ url: n, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: file.ext });
-                        total++; fileCount++;
-                        UI.addLog(`  ➕ Thêm: ${U.getFileName(n)} (${file.ext})`);
-                    } else {
-                        dupCount++;
-                        UI.addLog(`  ⏭ Bỏ qua: ${U.getFileName(n)} (trùng)`);
+            UI.addLog(`📡 Đang tải: ${name}...`);
+            const raw = await Net.fetch(it.url);
+            const mode = document.getElementById('saveMode');
+            const content = mode && mode.value === 'raw' ? raw : C.H + raw;
+            it.txt = content;
+            it.size = new Blob([content]).size;
+            it.s = 'done';
+            it.checksum = await U.sha256(content);
+            it.retries = 0;
+            Cache.set(it.url, content);
+            const used = Math.round(performance.now() - st);
+            it.tm = used + 'ms';
+            S.tt += used;
+            S.dc++;
+            S.crawled++;
+            UI.addLog(`✅ Thành công: ${name} - ${U.sz(it.size)} (${used}ms)`);
+            UI.msg(`✅ ${name} - ${U.sz(it.size)}`);
+        } catch (e) {
+            it.s = 'fail';
+            it.err = e.message;
+            it.retries = (it.retries || 0) + 1;
+            S.failCount++;
+            UI.addLog(`❌ Lỗi: ${name} - ${e.message} (lần ${it.retries})`);
+            UI.msg(`❌ ${name} - ${e.message}`);
+            if (it.retries < C.RL) {
+                UI.addLog(`🔄 Sẽ thử lại ${name}...`);
+                setTimeout(() => {
+                    if (!S.pause && it.s === 'fail') {
+                        it.s = 'pending';
+                        UI.render();
+                        W.process();
                     }
-                }
-                
-                S.duplicates += dupCount;
-                UI.msg(`🔍 Tìm thấy ${total} file (bỏ qua ${dupCount} trùng)`);
-                UI.addLog(`📊 Tổng: ${total} file mới, ${dupCount} trùng`);
-                UI.render();
-                UI.stats();
-                
-                if (total > 0) {
-                    UI.addLog(`🚀 Bắt đầu tải ${total} file...`);
-                    S.pause = false;
-                    await W.process();
-                } else {
-                    UI.addLog(`⚠️ Không có file mới để tải!`);
-                }
-            } catch (e) {
-                UI.addLog(`❌ Lỗi crawl ${mainUrl}: ${e.message}`);
-                Dialog.alert(`❌ Lỗi: ${e.message}`);
+                }, 500 * it.retries);
+            } else {
+                UI.addLog(`💀 ${name} - Đã thử ${C.RL} lần, bỏ qua!`);
             }
-        },
-        start: async () => {
-            if (S.run) {
-                Dialog.alert('⚠️ Đang crawl, vui lòng đợi!');
-                return;
-            }
-            const val = document.getElementById('urlInput');
-            if (!val) { Dialog.alert('⚠️ Không tìm thấy input!'); return; }
-            const urls = Net.extract(val.value);
-            if (!urls.length) {
-                Dialog.alert('⚠️ Không có URL hợp lệ!');
-                return;
-            }
-            const mainUrl = urls[0];
-            S.mainUrl = mainUrl;
-            let used = Number(localStorage.getItem('toolUse') || 1247);
-            used += 1;
-            localStorage.setItem('toolUse', used);
-            const uc = document.getElementById('userCount');
-            if (uc) uc.textContent = used;
+        } finally {
+            S.proc.delete(idx);
+            UI.render();
+            UI.stats();
+        }
+    },
+    crawlAll: async () => {
+        if (S.run) {
+            Dialog.alert('⚠️ Đang crawl, dừng trước khi crawl mới!');
+            return;
+        }
+        const val = document.getElementById('urlInput');
+        if (!val) { Dialog.alert('⚠️ Không tìm thấy input!'); return; }
+        const urls = Net.extract(val.value);
+        if (!urls.length) {
+            Dialog.alert('⚠️ Không có URL hợp lệ!');
+            return;
+        }
+        const mainUrl = urls[0];
+        S.mainUrl = mainUrl;
+        UI.addLog(`🎯 Mục tiêu: ${mainUrl}`);
+        UI.msg(`🎯 Crawl: ${mainUrl}`);
+        
+        const maxFiles = parseInt(document.getElementById('maxFiles')?.value || 100);
+        const timeout = parseInt(document.getElementById('timeoutSec')?.value || 10);
+        const speedMode = document.getElementById('speedMode')?.value || 'medium';
+        C.TO = timeout * 1000;
+        const speedMap = { fast: 10, medium: 5, slow: 2 };
+        C.MC = speedMap[speedMode] || 5;
+        
+        UI.addLog(`🔍 Đang phân tích trang chủ: ${mainUrl}`);
+        UI.msg(`🔍 Đang phân tích...`);
+        
+        try {
+            const html = await Net.fetch(mainUrl);
+            UI.addLog(`📄 Đã tải HTML chính (${U.sz(new Blob([html]).size)})`);
             
-            if (S.q.length > 0) {
-                const confirm = await new Promise(resolve => {
-                    Dialog.confirm('Queue cũ chưa xong, xóa và bắt đầu mới?', () => resolve(true));
-                });
-                if (!confirm) return;
-                S.q = [];
-            }
+            const files = Net.extractAllFiles(html, mainUrl);
+            UI.addLog(`🔍 Tìm thấy ${files.length} file liên quan`);
+            
+            let total = 0, dupCount = 0, fileCount = 0;
             
             S.q.push({ url: mainUrl, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: 'html' });
+            total++; fileCount++;
+            UI.addLog(`  ➕ Thêm: index.html (trang chính)`);
             
-            UI.msg('📥 Thêm 1 URL vào hàng đợi');
-            UI.addLog(`📥 Thêm: ${mainUrl}`);
+            for (const file of files) {
+                if (fileCount >= maxFiles) break;
+                const n = U.norm(file.url);
+                const existing = S.q.find(x => x.url === n);
+                if (!existing) {
+                    S.q.push({ url: n, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: file.ext });
+                    total++; fileCount++;
+                    UI.addLog(`  ➕ Thêm: ${U.getFileName(n)} (${file.ext})`);
+                } else {
+                    dupCount++;
+                    UI.addLog(`  ⏭ Bỏ qua: ${U.getFileName(n)} (trùng)`);
+                }
+            }
+            
+            S.duplicates += dupCount;
+            UI.msg(`🔍 Tìm thấy ${total} file (bỏ qua ${dupCount} trùng)`);
+            UI.addLog(`📊 Tổng: ${total} file mới, ${dupCount} trùng`);
             UI.render();
             UI.stats();
-            S.pause = false;
-            const pb = document.getElementById('pauseBtn');
-            if (pb) pb.textContent = '⏸ Tạm dừng';
-            if (window._timerInterval) clearInterval(window._timerInterval);
-            window._timerInterval = setInterval(() => { UI.stats(); }, 1000);
-            await W.process();
-        },
-        pause: () => {
-            S.pause = !S.pause;
-            const pb = document.getElementById('pauseBtn');
-            if (pb) pb.textContent = S.pause ? '▶ Tiếp tục' : '⏸ Tạm dừng';
-            if (!S.pause && S.run) W.process();
-            UI.msg(S.pause ? '⏸ Đã dừng' : '▶ Tiếp tục');
-            UI.addLog(S.pause ? '⏸ Đã tạm dừng' : '▶ Tiếp tục crawl');
-        },
-        stop: () => {
-            Dialog.confirm('Dừng crawl và đặt lại trạng thái?', () => {
-                S.pause = true;
-                S.run = false;
-                S.start = 0;
-                S.abort.forEach(c => { try { c.abort(); } catch {} });
-                S.abort.clear();
-                S.proc.clear();
-                S.q.forEach(it => { if (it.s === 'run') it.s = 'pending'; });
-                const pb = document.getElementById('pauseBtn');
-                if (pb) pb.textContent = '▶ Tiếp tục';
-                if (window._timerInterval) { clearInterval(window._timerInterval); window._timerInterval = null; }
-                UI.msg('⏹ Đã dừng');
-                UI.addLog('⏹ Đã dừng toàn bộ');
-                UI.render();
-                UI.stats();
-            });
-        },
-        retry: (idx) => {
-            const it = S.q[idx];
-            if (!it || (it.s !== 'fail' && it.s !== 'done')) return;
-            it.s = 'pending';
-            it.retries = 0;
-            it.err = null;
-            UI.msg('🔄 Đặt lại: ' + U.getFileName(it.url));
-            UI.addLog('🔄 Đặt lại: ' + U.getFileName(it.url));
-            UI.render();
-            if (!S.run) W.process();
-        },
-        retryAll: () => {
-            let c = 0;
-            S.q.forEach(it => {
-                if (it.s === 'fail') {
-                    it.s = 'pending';
-                    it.retries = 0;
-                    it.err = null;
-                    c++;
-                }
-            });
-            UI.msg('🔄 Đặt lại ' + c + ' mục');
-            UI.addLog('🔄 Đặt lại ' + c + ' mục fail');
-            UI.render();
-            if (!S.run && c) W.process();
-        },
-        clearDone: () => {
-            Dialog.confirm('Xóa tất cả mục đã hoàn thành?', () => {
-                const b = S.q.length;
-                S.q = S.q.filter(x => x.s !== 'done');
-                UI.msg('🗑 Xóa ' + (b - S.q.length) + ' mục');
-                UI.addLog('🗑 Xóa ' + (b - S.q.length) + ' mục done');
-                UI.render();
-                UI.stats();
-            });
-        },
-        clearFailed: () => {
-            Dialog.confirm('Xóa tất cả mục bị lỗi?', () => {
-                const b = S.q.length;
-                S.q = S.q.filter(x => x.s !== 'fail');
-                UI.msg('🗑 Xóa ' + (b - S.q.length) + ' mục');
-                UI.addLog('🗑 Xóa ' + (b - S.q.length) + ' mục fail');
-                UI.render();
-                UI.stats();
-            });
-        },
-        clearAll: () => {
-            Dialog.confirm('Xóa tất cả dữ liệu?', () => {
-                S.q = [];
-                Cache.clear();
-                UI.msg('🗑 Đã xóa');
-                UI.addLog('🗑 Xóa toàn bộ dữ liệu');
-                UI.render();
-                UI.stats();
-                UI.clear();
-            });
-        },
-        view: (idx) => {
-            const it = S.q[idx];
-            UI.show(it?.txt || '--');
-        },
-        download: (idx) => {
-            const it = S.q[idx];
-            if (!it?.txt) {
-                Dialog.alert('Không có nội dung để tải!');
-                return;
+            
+            if (total > 0) {
+                UI.addLog(`🚀 Bắt đầu tải ${total} file...`);
+                S.pause = false;
+                await W.process();
+            } else {
+                UI.addLog(`⚠️ Không có file mới để tải!`);
             }
-            const dm = U.dm(it.url);
-            const ext = it.fileType || 'txt';
-            const blob = new Blob([it.txt], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `dump_${dm}_${U.ts()}.${ext}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-            UI.msg('📥 Tải: ' + U.getFileName(it.url));
-        },
-        downloadSelected: () => {
-            const checked = document.querySelectorAll('.chk:checked');
-            if (!checked.length) {
-                Dialog.alert('Chọn ít nhất 1 file để tải!');
-                return;
-            }
-            const items = [];
-            checked.forEach(cb => {
-                const idx = parseInt(cb.dataset.i);
-                const it = S.q[idx];
-                if (it && it.s === 'done' && it.txt) items.push(it);
-            });
-            if (!items.length) {
-                Dialog.alert('Không có file nào đã crawl xong!');
-                return;
-            }
-            if (items.length === 1) {
-                const idx = S.q.indexOf(items[0]);
-                W.download(idx);
-                return;
-            }
-            Dialog.chooseFiles(items, (selected) => {
-                if (selected.length === 1) {
-                    const idx = S.q.indexOf(selected[0]);
-                    W.download(idx);
-                    return;
-                }
-                const zip = new JSZip();
-                const dm = U.dm(S.mainUrl || selected[0].url);
-                for (const it of selected) {
-                    const ext = it.fileType || 'txt';
-                    const name = U.getFileName(it.url);
-                    zip.file(`${dm}_${name}.${ext}`, it.txt);
-                }
-                zip.generateAsync({ type: 'blob' }).then(blob => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${dm}_${U.ts()}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
-                    UI.msg(`📦 ZIP ${selected.length} file`);
-                    UI.addLog(`📦 Tải ZIP ${selected.length} file`);
-                }).catch(e => {
-                    Dialog.alert('❌ Lỗi tạo ZIP: ' + e.message);
-                });
-            });
-        },
-        downloadAll: async () => {
-            const items = S.q.filter(x => x.s === 'done' && x.txt);
-            if (!items.length) {
-                Dialog.alert('Không có dữ liệu để tải!');
-                return;
-            }
-            if (items.length === 1) {
-                const idx = S.q.indexOf(items[0]);
-                W.download(idx);
-                return;
-            }
-            Dialog.chooseFiles(items, (selected) => {
-                if (selected.length === 1) {
-                    const idx = S.q.indexOf(selected[0]);
-                    W.download(idx);
-                    return;
-                }
-                const zip = new JSZip();
-                const dm = U.dm(S.mainUrl || selected[0].url);
-                for (const it of selected) {
-                    const ext = it.fileType || 'txt';
-                    const name = U.getFileName(it.url);
-                    zip.file(`${dm}_${name}.${ext}`, it.txt);
-                }
-                zip.generateAsync({ type: 'blob' }).then(blob => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `${dm}_${U.ts()}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
-                    UI.msg(`📦 ZIP ${selected.length} file`);
-                    UI.addLog(`📦 Tải ZIP ${selected.length} file`);
-                }).catch(e => {
-                    Dialog.alert('❌ Lỗi tạo ZIP: ' + e.message);
-                });
-            });
-        },
-        copy: () => {
-            const t = document.getElementById('codeView');
-            if (!t || !t.textContent.trim()) {
-                Dialog.alert('Không có nội dung để sao chép!');
-                return;
-            }
-            navigator.clipboard.writeText(t.textContent).then(() => UI.msg('📋 Đã sao chép')).catch(() => Dialog.alert('❌ Lỗi sao chép!'));
-        },
-        selAll: () => {
-            document.querySelectorAll('.chk').forEach(c => c.checked = true);
-            UI.updSel();
-        },
-        selNone: () => {
-            document.querySelectorAll('.chk').forEach(c => c.checked = false);
-            UI.updSel();
-        },
-        selInv: () => {
-            document.querySelectorAll('.chk').forEach(c => c.checked = !c.checked);
-            UI.updSel();
-        },
-        batchDel: () => {
-            const c = document.querySelectorAll('.chk:checked');
-            if (!c.length) {
-                Dialog.alert('Chọn ít nhất 1 mục!');
-                return;
-            }
-            Dialog.confirm('Xóa ' + c.length + ' mục đã chọn?', () => {
-                const idxs = [...c].map(cb => parseInt(cb.dataset.i)).sort((a, b) => b - a);
-                for (const i of idxs) S.q.splice(i, 1);
-                UI.msg('🗑 Xóa ' + idxs.length + ' mục');
-                UI.addLog('🗑 Xóa ' + idxs.length + ' mục đã chọn');
-                UI.render();
-                UI.stats();
-                UI.updSel();
-            });
-        },
-        batchRetry: () => {
-            const c = document.querySelectorAll('.chk:checked');
-            if (!c.length) {
-                Dialog.alert('Chọn ít nhất 1 mục!');
-                return;
-            }
-            let count = 0;
-            [...c].forEach(cb => {
-                const idx = parseInt(cb.dataset.i);
-                const it = S.q[idx];
-                if (it && (it.s === 'fail' || it.s === 'done')) {
-                    it.s = 'pending';
-                    it.retries = 0;
-                    it.err = null;
-                    count++;
-                }
-            });
-            UI.msg('🔄 Đặt lại ' + count + ' mục');
-            UI.addLog('🔄 Đặt lại ' + count + ' mục đã chọn');
-            UI.render();
-            if (!S.run && count) W.process();
-        },
-        import: (file) => {
-            if (!file) return;
-            const r = new FileReader();
-            r.onload = e => {
-                const input = document.getElementById('urlInput');
-                if (input) input.value = e.target.result;
-                UI.msg('📂 Import: ' + file.name);
-                UI.addLog('📂 Import file: ' + file.name);
-            };
-            r.onerror = () => Dialog.alert('❌ Lỗi đọc file!');
-            r.readAsText(file);
-        },
-        export: () => {
-            const txt = S.q.map(x => x.url).join('\n');
-            if (!txt) {
-                Dialog.alert('Danh sách trống!');
-                return;
-            }
-            const b = new Blob([txt]);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(b);
-            a.download = `urls_${U.ts()}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            UI.msg('📤 Xuất ' + S.q.length + ' URL');
-        },
-        exportJson: () => {
-            const items = S.q.filter(x => x.s === 'done' && x.txt);
-            if (!items.length) {
-                Dialog.alert('Không có kết quả!');
-                return;
-            }
-            const data = items.map(x => ({
-                url: x.url,
-                size: x.size,
-                checksum: x.checksum,
-                time: x.tm,
-                content: x.txt,
-                type: x.fileType
-            }));
-            const b = new Blob([JSON.stringify(data, null, 2)]);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(b);
-            a.download = `results_${U.ts()}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            UI.msg('📤 Xuất JSON ' + items.length + ' file');
-        },
-        clearLog: () => {
-            S.logs = [];
-            const lv = document.getElementById('logView');
-            if (lv) lv.textContent = '';
-            UI.msg('🗑 Xóa log');
+        } catch (e) {
+            UI.addLog(`❌ Lỗi crawl ${mainUrl}: ${e.message}`);
+            Dialog.alert(`❌ Lỗi: ${e.message}`);
         }
-    };
-
-    window._v = W.view;
-    window._d = W.download;
-    window._r = W.retry;
-    window._del = W.clearAll;
-
-    const init = () => {
-        const load = () => {
-            const ap = document.getElementById('autoProxy');
-            if (ap) ap.checked = localStorage.getItem('autoProxy') === 'true';
-            const si = document.getElementById('spoofInfo');
-            if (si) si.checked = localStorage.getItem('spoofInfo') === 'true';
-            const rf = document.getElementById('retryFail');
-            if (rf) rf.checked = localStorage.getItem('retryFail') === 'true';
-            const sm = document.getElementById('saveMode');
-            if (sm) {
-                const m = localStorage.getItem('saveMode');
-                if (m) sm.value = m;
-            }
-        };
-        load();
-
-        const bind = (id, fn) => {
-            const el = document.getElementById(id);
-            if (el) el.addEventListener('click', fn);
-        };
-
-        bind('startBtn', W.start);
-        bind('pauseBtn', W.pause);
-        bind('stopBtn', W.stop);
-        bind('resetAll', W.clearAll);
-        bind('clearDone', W.clearDone);
-        bind('clearFailed', W.clearFailed);
-        bind('copyTxt', W.copy);
-        bind('packZip', W.downloadAll);
-        bind('downloadSelected', W.downloadSelected);
-        bind('redoFail', W.retryAll);
-        bind('selAll', W.selAll);
-        bind('selNone', W.selNone);
-        bind('selInvert', W.selInv);
-        bind('delSelected', W.batchDel);
-        bind('retrySelected', W.batchRetry);
-        bind('saveList', W.export);
-        bind('exportResults', W.exportJson);
-        bind('loadList', () => document.getElementById('filePick')?.click());
-        bind('clearCache', () => { Cache.clear(); UI.msg('🗑 Xóa cache'); UI.addLog('🗑 Xóa cache'); });
-        bind('crawlAllBtn', W.crawlAll);
-        bind('showLogBtn', () => { UI.toggleLog(true); UI.addLog('📋 Mở log'); });
-        bind('hideLogBtn', () => { UI.toggleLog(false); UI.addLog('📋 Đóng log'); });
-        bind('clearLogBtn', W.clearLog);
-
-        const fp = document.getElementById('filePick');
-        if (fp) {
-            fp.addEventListener('change', e => {
-                W.import(e.target.files[0]);
-                e.target.value = '';
-            });
+    },
+    start: async () => {
+        if (S.run) {
+            Dialog.alert('⚠️ Đang crawl, vui lòng đợi!');
+            return;
         }
-
-        document.querySelectorAll('.f-btn').forEach(b => {
-            b.addEventListener('click', () => {
-                document.querySelectorAll('.f-btn').forEach(x => x.classList.remove('active'));
-                b.classList.add('active');
-                S.f = b.dataset.f;
-                UI.render();
-            });
-        });
-
-        const ap = document.getElementById('autoProxy');
-        if (ap) ap.addEventListener('change', () => localStorage.setItem('autoProxy', ap.checked));
-        const si = document.getElementById('spoofInfo');
-        if (si) si.addEventListener('change', () => localStorage.setItem('spoofInfo', si.checked));
-        const rf = document.getElementById('retryFail');
-        if (rf) rf.addEventListener('change', () => localStorage.setItem('retryFail', rf.checked));
-        const sm = document.getElementById('saveMode');
-        if (sm) sm.addEventListener('change', () => localStorage.setItem('saveMode', sm.value));
-
+        const val = document.getElementById('urlInput');
+        if (!val) { Dialog.alert('⚠️ Không tìm thấy input!'); return; }
+        const urls = Net.extract(val.value);
+        if (!urls.length) {
+            Dialog.alert('⚠️ Không có URL hợp lệ!');
+            return;
+        }
+        const mainUrl = urls[0];
+        S.mainUrl = mainUrl;
+        let used = Number(localStorage.getItem('toolUse') || 1247);
+        used += 1;
+        localStorage.setItem('toolUse', used);
         const uc = document.getElementById('userCount');
-        if (uc) uc.textContent = localStorage.getItem('toolUse') || '1247';
-        const bc = document.getElementById('bypassCount');
-        if (bc) bc.textContent = S.bc;
-
+        if (uc) uc.textContent = used;
+        
+        if (S.q.length > 0) {
+            const confirm = await new Promise(resolve => {
+                Dialog.confirm('Queue cũ chưa xong, xóa và bắt đầu mới?', () => resolve(true));
+            });
+            if (!confirm) return;
+            S.q = [];
+        }
+        
+        S.q.push({ url: mainUrl, txt: null, size: 0, s: 'pending', tm: null, err: null, retries: 0, checksum: null, fileType: 'html' });
+        
+        UI.msg('📥 Thêm 1 URL vào hàng đợi');
+        UI.addLog(`📥 Thêm: ${mainUrl}`);
         UI.render();
         UI.stats();
-        UI.addLog('🚀 MiniSeres Dump Tool đã sẵn sàng!');
-        UI.addLog('📌 Nhập 1 URL và bấm "Crawl ALL" để lấy toàn bộ file');
-
-        const saved = localStorage.getItem('queueData');
-        if (saved) {
-            try {
-                const p = JSON.parse(saved);
-                if (Array.isArray(p) && p.length) {
-                    S.q = p;
-                    UI.render();
-                    UI.stats();
-                    UI.msg('📂 Khôi phục ' + S.q.length + ' mục');
-                    UI.addLog('📂 Khôi phục ' + S.q.length + ' mục từ cache');
-                }
-            } catch {}
-        }
-
-        setInterval(() => {
-            try {
-                const save = S.q.filter(x => x.s === 'done' || x.s === 'fail' || x.s === 'pending').slice(0, 500);
-                if (save.length) localStorage.setItem('queueData', JSON.stringify(save));
-                localStorage.setItem('crawlState', JSON.stringify({
-                    run: S.run,
-                    pause: S.pause,
-                    crawled: S.crawled,
-                    total: S.q.length
-                }));
-            } catch {}
+        S.pause = false;
+        const pb = document.getElementById('pauseBtn');
+        if (pb) pb.textContent = '⏸ Tạm dừng';
+        if (window._timerInterval) clearInterval(window._timerInterval);
+        window._timerInterval = setInterval(() => { UI.stats();
+        }, 1000);
+        await W.process();
+    },
+    pause: () => {
+        S.pause = !S.pause;
+        const pb = document.getElementById('pauseBtn');
+        if (pb) pb.textContent = S.pause ? '▶ Tiếp tục' : '⏸ Tạm dừng';
+        if (!S.pause && S.run) W.process();
+        UI.msg(S.pause ? '⏸ Đã dừng' : '▶ Tiếp tục');
+        UI.addLog(S.pause ? '⏸ Đã tạm dừng' : '▶ Tiếp tục crawl');
+    },
+    stop: () => {
+        Dialog.confirm('Dừng crawl và đặt lại trạng thái?', () => {
+            S.pause = true;
+            S.run = false;
+            S.start = 0;
+            S.abort.forEach(c => { try { c.abort(); } catch {} });
+            S.abort.clear();
+            S.proc.clear();
+            S.q.forEach(it => { if (it.s === 'run') it.s = 'pending'; });
+            const pb = document.getElementById('pauseBtn');
+            if (pb) pb.textContent = '▶ Tiếp tục';
+            if (window._timerInterval) { clearInterval(window._timerInterval); window._timerInterval = null; }
+            UI.msg('⏹ Đã dừng');
+            UI.addLog('⏹ Đã dừng toàn bộ');
+            UI.render();
             UI.stats();
-        }, 5000);
-
-        const cd = document.getElementById('customDialog');
-        if (cd) {
-            cd.addEventListener('click', function(e) {
-                if (e.target === this) Dialog.hide();
+        });
+    },
+    retry: (idx) => {
+        const it = S.q[idx];
+        if (!it || (it.s !== 'fail' && it.s !== 'done')) return;
+        it.s = 'pending';
+        it.retries = 0;
+        it.err = null;
+        UI.msg('🔄 Đặt lại: ' + U.getFileName(it.url));
+        UI.addLog('🔄 Đặt lại: ' + U.getFileName(it.url));
+        UI.render();
+        if (!S.run) W.process();
+    },
+    retryAll: () => {
+        let c = 0;
+        S.q.forEach(it => {
+            if (it.s === 'fail') {
+                it.s = 'pending';
+                it.retries = 0;
+                it.err = null;
+                c++;
+            }
+        });
+        UI.msg('🔄 Đặt lại ' + c + ' mục');
+        UI.addLog('🔄 Đặt lại ' + c + ' mục fail');
+        UI.render();
+        if (!S.run && c) W.process();
+    },
+    clearDone: () => {
+        Dialog.confirm('Xóa tất cả mục đã hoàn thành?', () => {
+            const b = S.q.length;
+            S.q = S.q.filter(x => x.s !== 'done');
+            UI.msg('🗑 Xóa ' + (b - S.q.length) + ' mục');
+            UI.addLog('🗑 Xóa ' + (b - S.q.length) + ' mục done');
+            UI.render();
+            UI.stats();
+        });
+    },
+    clearFailed: () => {
+        Dialog.confirm('Xóa tất cả mục bị lỗi?', () => {
+            const b = S.q.length;
+            S.q = S.q.filter(x => x.s !== 'fail');
+            UI.msg('🗑 Xóa ' + (b - S.q.length) + ' mục');
+            UI.addLog('🗑 Xóa ' + (b - S.q.length) + ' mục fail');
+            UI.render();
+            UI.stats();
+        });
+    },
+    clearAll: () => {
+        Dialog.confirm('Xóa tất cả dữ liệu?', () => {
+            S.q = [];
+            Cache.clear();
+            UI.msg('🗑 Đã xóa');
+            UI.addLog('🗑 Xóa toàn bộ dữ liệu');
+            UI.render();
+            UI.stats();
+            UI.clear();
+        });
+    },
+    view: (idx) => {
+        const it = S.q[idx];
+        UI.show(it?.txt || '--');
+    },
+    download: (idx) => {
+        const it = S.q[idx];
+        if (!it?.txt) {
+            Dialog.alert('Không có nội dung để tải!');
+            return;
+        }
+        const dm = U.dm(it.url);
+        const ext = it.fileType || 'txt';
+        const blob = new Blob([it.txt], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dump_${dm}_${U.ts()}.${ext}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        UI.msg('📥 Tải: ' + U.getFileName(it.url));
+    },
+    downloadSelected: () => {
+        const checked = document.querySelectorAll('.chk:checked');
+        if (!checked.length) {
+            Dialog.alert('Chọn ít nhất 1 file để tải!');
+            return;
+        }
+        const items = [];
+        checked.forEach(cb => {
+            const idx = parseInt(cb.dataset.i);
+            const it = S.q[idx];
+            if (it && it.s === 'done' && it.txt) items.push(it);
+        });
+        if (!items.length) {
+            Dialog.alert('Không có file nào đã crawl xong!');
+            return;
+        }
+        if (items.length === 1) {
+            const idx = S.q.indexOf(items[0]);
+            W.download(idx);
+            return;
+        }
+        Dialog.chooseFiles(items, (selected) => {
+            if (selected.length === 1) {
+                const idx = S.q.indexOf(selected[0]);
+                W.download(idx);
+                return;
+            }
+            const zip = new JSZip();
+            const dm = U.dm(S.mainUrl || selected[0].url);
+            for (const it of selected) {
+                const ext = it.fileType || 'txt';
+                const name = U.getFileName(it.url);
+                zip.file(`${dm}_${name}.${ext}`, it.txt);
+            }
+            zip.generateAsync({ type: 'blob' }).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${dm}_${U.ts()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                UI.msg(`📦 ZIP ${selected.length} file`);
+                UI.addLog(`📦 Tải ZIP ${selected.length} file`);
+            }).catch(e => {
+                Dialog.alert('❌ Lỗi tạo ZIP: ' + e.message);
             });
+        });
+    },
+    downloadAll: async () => {
+        const items = S.q.filter(x => x.s === 'done' && x.txt);
+        if (!items.length) {
+            Dialog.alert('Không có dữ liệu để tải!');
+            return;
+        }
+        if (items.length === 1) {
+            const idx = S.q.indexOf(items[0]);
+            W.download(idx);
+            return;
+        }
+        Dialog.chooseFiles(items, (selected) => {
+            if (selected.length === 1) {
+                const idx = S.q.indexOf(selected[0]);
+                W.download(idx);
+                return;
+            }
+            const zip = new JSZip();
+            const dm = U.dm(S.mainUrl || selected[0].url);
+            for (const it of selected) {
+                const ext = it.fileType || 'txt';
+                const name = U.getFileName(it.url);
+                zip.file(`${dm}_${name}.${ext}`, it.txt);
+            }
+            zip.generateAsync({ type: 'blob' }).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${dm}_${U.ts()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+                UI.msg(`📦 ZIP ${selected.length} file`);
+                UI.addLog(`📦 Tải ZIP ${selected.length} file`);
+            }).catch(e => {
+                Dialog.alert('❌ Lỗi tạo ZIP: ' + e.message);
+            });
+        });
+    },
+    copy: () => {
+        const t = document.getElementById('codeView');
+        if (!t || !t.textContent.trim()) {
+            Dialog.alert('Không có nội dung để sao chép!');
+            return;
+        }
+        navigator.clipboard.writeText(t.textContent).then(() => UI.msg('📋 Đã sao chép')).catch(() => Dialog.alert('❌ Lỗi sao chép!'));
+    },
+    selAll: () => {
+        document.querySelectorAll('.chk').forEach(c => c.checked = true);
+        UI.updSel();
+    },
+    selNone: () => {
+        document.querySelectorAll('.chk').forEach(c => c.checked = false);
+        UI.updSel();
+    },
+    selInv: () => {
+        document.querySelectorAll('.chk').forEach(c => c.checked = !c.checked);
+        UI.updSel();
+    },
+    batchDel: () => {
+        const c = document.querySelectorAll('.chk:checked');
+        if (!c.length) {
+            Dialog.alert('Chọn ít nhất 1 mục!');
+            return;
+        }
+        Dialog.confirm('Xóa ' + c.length + ' mục đã chọn?', () => {
+            const idxs = [...c].map(cb => parseInt(cb.dataset.i)).sort((a, b) => b - a);
+            for (const i of idxs) S.q.splice(i, 1);
+            UI.msg('🗑 Xóa ' + idxs.length + ' mục');
+            UI.addLog('🗑 Xóa ' + idxs.length + ' mục đã chọn');
+            UI.render();
+            UI.stats();
+            UI.updSel();
+        });
+    },
+    batchRetry: () => {
+        const c = document.querySelectorAll('.chk:checked');
+        if (!c.length) {
+            Dialog.alert('Chọn ít nhất 1 mục!');
+            return;
+        }
+        let count = 0;
+        [...c].forEach(cb => {
+            const idx = parseInt(cb.dataset.i);
+            const it = S.q[idx];
+            if (it && (it.s === 'fail' || it.s === 'done')) {
+                it.s = 'pending';
+                it.retries = 0;
+                it.err = null;
+                count++;
+            }
+        });
+        UI.msg('🔄 Đặt lại ' + count + ' mục');
+        UI.addLog('🔄 Đặt lại ' + count + ' mục đã chọn');
+        UI.render();
+        if (!S.run && count) W.process();
+    },
+    import: (file) => {
+        if (!file) return;
+        const r = new FileReader();
+        r.onload = e => {
+            const input = document.getElementById('urlInput');
+            if (input) input.value = e.target.result;
+            UI.msg('📂 Import: ' + file.name);
+            UI.addLog('📂 Import file: ' + file.name);
+        };
+        r.onerror = () => Dialog.alert('❌ Lỗi đọc file!');
+        r.readAsText(file);
+    },
+    export: () => {
+        const txt = S.q.map(x => x.url).join('\n');
+        if (!txt) {
+            Dialog.alert('Danh sách trống!');
+            return;
+        }
+        const b = new Blob([txt]);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = `urls_${U.ts()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        UI.msg('📤 Xuất ' + S.q.length + ' URL');
+    },
+    exportJson: () => {
+        const items = S.q.filter(x => x.s === 'done' && x.txt);
+        if (!items.length) {
+            Dialog.alert('Không có kết quả!');
+            return;
+        }
+        const data = items.map(x => ({
+            url: x.url,
+            size: x.size,
+            checksum: x.checksum,
+            time: x.tm,
+            content: x.txt,
+            type: x.fileType
+        }));
+        const b = new Blob([JSON.stringify(data, null, 2)]);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = `results_${U.ts()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        UI.msg('📤 Xuất JSON ' + items.length + ' file');
+    },
+    clearLog: () => {
+        S.logs = [];
+        const lv = document.getElementById('logView');
+        if (lv) lv.textContent = '';
+        UI.msg('🗑 Xóa log');
+    }
+};
+
+window._v = W.view;
+window._d = W.download;
+window._r = W.retry;
+window._del = W.clearAll;
+
+const init = () => {
+    const load = () => {
+        const ap = document.getElementById('autoProxy');
+        if (ap) ap.checked = localStorage.getItem('autoProxy') === 'true';
+        const si = document.getElementById('spoofInfo');
+        if (si) si.checked = localStorage.getItem('spoofInfo') === 'true';
+        const rf = document.getElementById('retryFail');
+        if (rf) rf.checked = localStorage.getItem('retryFail') === 'true';
+        const sm = document.getElementById('saveMode');
+        if (sm) {
+            const m = localStorage.getItem('saveMode');
+            if (m) sm.value = m;
         }
     };
+    load();
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
+    const bind = (id, fn) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('click', fn);
+    };
+
+    bind('startBtn', W.start);
+    bind('pauseBtn', W.pause);
+    bind('stopBtn', W.stop);
+    bind('resetAll', W.clearAll);
+    bind('clearDone', W.clearDone);
+    bind('clearFailed', W.clearFailed);
+    bind('copyTxt', W.copy);
+    bind('packZip', W.downloadAll);
+    bind('downloadSelected', W.downloadSelected);
+    bind('redoFail', W.retryAll);
+    bind('selAll', W.selAll);
+    bind('selNone', W.selNone);
+    bind('selInvert', W.selInv);
+    bind('delSelected', W.batchDel);
+    bind('retrySelected', W.batchRetry);
+    bind('saveList', W.export);
+    bind('exportResults', W.exportJson);
+    bind('loadList', () => document.getElementById('filePick')?.click());
+    bind('clearCache', () => { Cache.clear(); UI.msg('🗑 Xóa cache'); UI.addLog('🗑 Xóa cache'); });
+    bind('crawlAllBtn', W.crawlAll);
+    bind('showLogBtn', () => { UI.toggleLog(true); UI.addLog('📋 Mở log'); });
+    bind('hideLogBtn', () => { UI.toggleLog(false); UI.addLog('📋 Đóng log'); });
+    bind('clearLogBtn', W.clearLog);
+
+    const fp = document.getElementById('filePick');
+    if (fp) {
+        fp.addEventListener('change', e => {
+            W.import(e.target.files[0]);
+            e.target.value = '';
+        });
     }
+
+    document.querySelectorAll('.f-btn').forEach(b => {
+        b.addEventListener('click', () => {
+            document.querySelectorAll('.f-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            S.f = b.dataset.f;
+            UI.render();
+        });
+    });
+
+    const ap = document.getElementById('autoProxy');
+    if (ap) ap.addEventListener('change', () => localStorage.setItem('autoProxy', ap.checked));
+    const si = document.getElementById('spoofInfo');
+    if (si) si.addEventListener('change', () => localStorage.setItem('spoofInfo', si.checked));
+    const rf = document.getElementById('retryFail');
+    if (rf) rf.addEventListener('change', () => localStorage.setItem('retryFail', rf.checked));
+    const sm = document.getElementById('saveMode');
+    if (sm) sm.addEventListener('change', () => localStorage.setItem('saveMode', sm.value));
+
+    const uc = document.getElementById('userCount');
+    if (uc) uc.textContent = localStorage.getItem('toolUse') || '1247';
+    const bc = document.getElementById('bypassCount');
+    if (bc) bc.textContent = S.bc;
+
+    UI.render();
+    UI.stats();
+    UI.addLog('🚀 MiniSeres Dump Tool đã sẵn sàng!');
+    UI.addLog('📌 Nhập 1 URL và bấm "Crawl ALL" để lấy toàn bộ file');
+
+    const saved = localStorage.getItem('queueData');
+    if (saved) {
+        try {
+            const p = JSON.parse(saved);
+            if (Array.isArray(p) && p.length) {
+                S.q = p;
+                UI.render();
+                UI.stats();
+                UI.msg('📂 Khôi phục ' + S.q.length + ' mục');
+                UI.addLog('📂 Khôi phục ' + S.q.length + ' mục từ cache');
+            }
+        } catch {}
+    }
+
+    setInterval(() => {
+        try {
+            const save = S.q.filter(x => x.s === 'done' || x.s === 'fail' || x.s === 'pending').slice(0, 500);
+            if (save.length) localStorage.setItem('queueData', JSON.stringify(save));
+            localStorage.setItem('crawlState', JSON.stringify({
+                run: S.run,
+                pause: S.pause,
+                crawled: S.crawled,
+                total: S.q.length
+            }));
+        } catch {}
+        UI.stats();
+    }, 5000);
+
+    const cd = document.getElementById('customDialog');
+    if (cd) {
+        cd.addEventListener('click', function(e) {
+            if (e.target === this) Dialog.hide();
+        });
+    }
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}
 })();
